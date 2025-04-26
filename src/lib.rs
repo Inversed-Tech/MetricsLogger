@@ -12,6 +12,7 @@ use state::*;
 use metrics::{Counter, Gauge, Histogram, Key, KeyName, Metadata, Recorder, SharedString, Unit};
 use std::sync::Arc;
 use std::sync::mpsc::{self, Sender};
+use std::time::Duration;
 
 pub struct MetricsLogger<F> {
     tx: Sender<MetricsCmd>,
@@ -22,12 +23,22 @@ impl<F> MetricsLogger<F>
 where
     F: Fn(&str) + Copy + Send + Sync + 'static,
 {
-    pub fn new(log_interval_secs: usize, log_cb: F, err_cb: F) -> Self {
+    pub fn new(log_interval_secs: u64, log_cb: F, err_cb: F) -> Self {
         let (tx, rx) = mpsc::channel();
         let mut state = MetricsState::new();
         std::thread::spawn(move || {
-            for cmd in rx.iter() {
-                state.update(cmd);
+            loop {
+                match rx.recv_timeout(Duration::from_secs(log_interval_secs)) {
+                    Ok(cmd) => {
+                        state.update(cmd);
+                    }
+                    Err(mpsc::RecvTimeoutError::Timeout) => {
+                        if let Some(logs) = state.output_logs() {
+                            (log_cb)(&logs);
+                        }
+                    }
+                    Err(mpsc::RecvTimeoutError::Disconnected) => break,
+                }
             }
         });
         Self { tx, err_cb }
