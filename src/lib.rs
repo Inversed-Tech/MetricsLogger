@@ -49,7 +49,7 @@ use state::*;
 use metrics::{Counter, Gauge, Histogram, Key, KeyName, Metadata, Recorder, SharedString, Unit};
 use std::sync::Arc;
 use std::sync::mpsc::{self, Sender};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 pub struct MetricsLogger<F> {
     tx: Sender<MetricsCmd>,
@@ -67,17 +67,24 @@ where
         let (tx, rx) = mpsc::channel();
         let mut state = MetricsState::new();
         std::thread::spawn(move || {
+            let interval = Duration::from_secs(log_interval_secs);
+            let mut next_log_time = Instant::now() + interval;
             loop {
                 match rx.recv_timeout(Duration::from_secs(log_interval_secs)) {
                     Ok(cmd) => {
                         state.update(cmd);
                     }
-                    Err(mpsc::RecvTimeoutError::Timeout) => {
-                        if let Some(logs) = state.output_logs() {
-                            (log_cb)(&logs);
-                        }
-                    }
+                    Err(mpsc::RecvTimeoutError::Timeout) => {}
                     Err(mpsc::RecvTimeoutError::Disconnected) => break,
+                }
+
+                let now = Instant::now();
+                if now >= next_log_time {
+                    if let Some(logs) = state.output_logs() {
+                        (log_cb)(&logs);
+                    }
+                    // schedule the *next* log
+                    next_log_time = now + interval;
                 }
             }
         });
