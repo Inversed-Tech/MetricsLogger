@@ -83,7 +83,6 @@ where
                     if let Some(logs) = state.output_logs() {
                         (log_cb)(&logs);
                     }
-                    // schedule the *next* log
                     next_log_time = now + interval;
                 }
             }
