@@ -1,0 +1,7 @@
+[package]
+name = "metrics-logger"
+version = "0.22.1"
+edition = "2024"
+
+[dependencies]
+metrics = "0.22.1"
