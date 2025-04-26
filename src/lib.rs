@@ -1,30 +1,26 @@
-//! # MetricsLogger
+//! # metrics-logger
 //!
-//! `MetricsLogger` is a library for logging and recording metrics in a structured and efficient manner.
-//! It integrates with the `metrics` crate and provides a custom implementation of the `Recorder` trait
-//! to handle counters, gauges, and histograms. The library is designed to allow users to log metrics
-//! periodically and handle errors gracefully.
+//! `metrics-logger` is a crate for logging metrics. It is intended to aid in development and testing,
+//! by allowing the developer to view the metrics in the logs without having to set up an endpoint to
+//! receive the logs over the network.
 //!
-//! ## Features
-//! - **Custom Recorder**: Implements the `Recorder` trait to register and describe metrics.
-//! - **Threaded Logging**: Uses a background thread to periodically log metrics based on a configurable interval.
-//! - **Error Handling**: Allows users to provide custom error handling callbacks.
+//! This is accomplished by providing an implementation of the `Recorder` trait from the `metrics` crate.
 //!
-//! ## Usage
-//! To use `MetricsLogger`, create an instance of the `MetricsLogger` struct by specifying the logging interval,
-//! a logging callback, and an error callback. The library will handle the rest, including updating metrics
-//! and invoking the provided callbacks. Note that the callbacks are required to avoid potential issues
-//! related to the user's project using a different version of the `log` or `tracing` crate than this crate.
+//! ## Notes
+//! - the version of `MetricsLogger` matches that of the `metrics` crate which it exports.
+//! - the MetricsLogger struct requires callbacks to avoid potential issues related to the user's
+//!   project using a different version of the `log` or `tracing` crate.
 //!
 //! ## Example
 //! ```rust
-//! use metrics_logger::MetricsLogger;
+//! use metrics_logger::{metrics, MetricsLogger};
 //!
-//! let logger = MetricsLogger::new(
-//!     10, // Log interval in seconds
+//! let recorder = MetricsLogger::new(
+//!     10, // Logging interval in seconds
 //!     |logs| println!("Metrics: {}", logs), // Logging callback
 //!     |err| eprintln!("Error: {}", err),    // Error callback
 //! );
+//! metrics::set_global_recorder(recorder).expect("global recorder can only be set once");
 //! ```
 //!
 //! ## Modules
