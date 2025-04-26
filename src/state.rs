@@ -113,10 +113,12 @@ impl HistogramState {
     }
 
     fn std_dev(&self) -> Option<f64> {
-        if self.num_samples < 2 {
+        if self.num_samples == 0 {
             None
         } else {
-            Some((self.sum_sq / (self.num_samples - 1) as f64).sqrt())
+            let avg_sq = self.avg().unwrap() * self.avg().unwrap();
+            let avg_ss = self.sum_sq / self.num_samples as f64;
+            Some((avg_ss - avg_sq).sqrt())
         }
     }
 
@@ -126,5 +128,55 @@ impl HistogramState {
         } else {
             Some(self.sum / self.num_samples as f64)
         }
+    }
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_histogram_state_avg() {
+        let mut histogram = HistogramState::default();
+        histogram.update(10.0);
+        histogram.update(20.0);
+        histogram.update(30.0);
+
+        assert_eq!(histogram.avg(), Some(20.0));
+    }
+
+    #[test]
+    fn test_histogram_state_std_dev() {
+        let mut histogram = HistogramState::default();
+        histogram.update(10.0);
+        histogram.update(20.0);
+        histogram.update(30.0);
+
+        // calculate using moments: sqrt( (100 + 400 + 900)/3 - (60/3)^2 )
+        let expected_std_dev: f64 = 8.16;
+        let rounded_std_dev = (histogram.std_dev().unwrap() * 100.0).round() / 100.0;
+        assert_eq!(rounded_std_dev, expected_std_dev);
+    }
+
+    #[test]
+    fn test_histogram_state_empty_avg() {
+        let histogram = HistogramState::default();
+        assert_eq!(histogram.avg(), None);
+    }
+
+    #[test]
+    fn test_histogram_state_empty_std_dev() {
+        let histogram = HistogramState::default();
+        assert_eq!(histogram.std_dev(), None);
+    }
+
+    #[test]
+    fn test_histogram_state_min_max() {
+        let mut histogram = HistogramState::default();
+        histogram.update(15.0);
+        histogram.update(5.0);
+        histogram.update(25.0);
+
+        assert_eq!(histogram.min, 5.0);
+        assert_eq!(histogram.max, 25.0);
     }
 }
