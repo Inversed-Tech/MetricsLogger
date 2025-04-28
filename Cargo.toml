@@ -2,6 +2,12 @@
 name = "metrics-logger"
 version = "0.22.1"
 edition = "2024"
+authors = ["Stuart Woodbury <stuart@inversed.tech>"]
+description = "Logs metrics, for development and testing purposes"
+readme = "README.md"
+repository = "https://github.com/Inversed-Tech/MetricsLogger"
+license = "MIT OR Apache-2.0"
+keywords = ["metrics"]
 
 [dependencies]
 metrics = "0.22.1"
