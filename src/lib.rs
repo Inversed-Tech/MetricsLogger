@@ -14,11 +14,11 @@
 //!
 //! ## Example
 //! ```rust
-//! use metrics_logger::{metrics, MetricsLogger};
+//! use metrics_logger::{metrics, MetricsLogger, LogMode};
 //!
 //! // MetricsLogger implements the Recorder trait
 //! let recorder = MetricsLogger::new(
-//!     10, // Logging interval in seconds
+//!     LogMode::Periodic(10), // Logging interval in seconds
 //!     |logs| println!("Metrics: {}", logs), // Logging callback
 //!     |err| eprintln!("Error: {}", err),    // Error callback
 //! );
@@ -48,7 +48,7 @@ use state::*;
 
 use metrics::{Counter, Gauge, Histogram, Key, KeyName, Metadata, Recorder, SharedString, Unit};
 use std::sync::Arc;
-use std::sync::mpsc::{self, Sender};
+use std::sync::mpsc::{self, Receiver, Sender};
 use std::time::{Duration, Instant};
 
 pub struct MetricsLogger<F> {
@@ -56,17 +56,52 @@ pub struct MetricsLogger<F> {
     err_cb: F,
 }
 
+pub enum LogMode {
+    /// Emit logs as soon as a metric is updated
+    Immediate,
+    /// Aggregate metrics for the specified duration, in seconds, before emitting a log
+    Periodic(u64),
+}
+
 impl<F> MetricsLogger<F>
 where
     F: Fn(&str) + Copy + Send + Sync + 'static,
 {
-    pub fn new<F2>(log_interval_secs: u64, log_cb: F2, err_cb: F) -> Self
+    pub fn new<F2>(mode: LogMode, log_cb: F2, err_cb: F) -> Self
     where
         F2: Fn(&str) + Copy + Send + Sync + 'static,
     {
         let (tx, rx) = mpsc::channel();
-        let mut state = MetricsState::new();
+        match mode {
+            LogMode::Immediate => Self::launch_immediate_mode(rx, log_cb),
+            LogMode::Periodic(log_interval_secs) => {
+                Self::launch_periodic_mode(rx, log_cb, log_interval_secs)
+            }
+        }
+        Self { tx, err_cb }
+    }
+
+    fn launch_immediate_mode<F2>(rx: Receiver<MetricsCmd>, log_cb: F2)
+    where
+        F2: Fn(&str) + Copy + Send + Sync + 'static,
+    {
         std::thread::spawn(move || {
+            let mut state = MetricsState::new();
+            for cmd in rx.iter() {
+                state.update(cmd);
+                if let Some(logs) = state.output_logs() {
+                    (log_cb)(&logs);
+                }
+            }
+        });
+    }
+
+    fn launch_periodic_mode<F2>(rx: Receiver<MetricsCmd>, log_cb: F2, log_interval_secs: u64)
+    where
+        F2: Fn(&str) + Copy + Send + Sync + 'static,
+    {
+        std::thread::spawn(move || {
+            let mut state = MetricsState::new();
             let interval = Duration::from_secs(log_interval_secs);
             let mut next_log_time = Instant::now() + interval;
             loop {
@@ -87,7 +122,6 @@ where
                 }
             }
         });
-        Self { tx, err_cb }
     }
 }
 

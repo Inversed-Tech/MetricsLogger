@@ -11,11 +11,11 @@ This is achieved by implementing the `Recorder` trait from the `metrics` crate.
 ## Example
 
 ```rust
-use metrics_logger::{metrics, MetricsLogger};
+use metrics_logger::{metrics, MetricsLogger, LogMode};
 
 // MetricsLogger implements the Recorder trait
 let recorder = MetricsLogger::new(
-    10, // Logging interval in seconds
+    LogMode::Periodic(10), // Logging interval in seconds
     |logs| println!("Metrics: {}", logs), // Logging callback
     |err| eprintln!("Error: {}", err),    // Error callback
 );
