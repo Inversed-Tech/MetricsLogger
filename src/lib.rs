@@ -60,7 +60,15 @@ pub enum LogMode {
     /// Emit logs as soon as a metric is updated
     Immediate,
     /// Aggregate metrics for the specified duration, in seconds, before emitting a log
-    Periodic(u64),
+    Periodic { mode: PeriodicMode, interval: u64}
+}
+
+#[derive(Clone, Copy)]
+pub enum PeriodicMode {
+    /// Only output metics which were updated.
+    Diff,
+    /// Output all metrics
+    Full
 }
 
 impl<F> MetricsLogger<F>
@@ -74,8 +82,8 @@ where
         let (tx, rx) = mpsc::channel();
         match mode {
             LogMode::Immediate => Self::launch_immediate_mode(rx, log_cb),
-            LogMode::Periodic(log_interval_secs) => {
-                Self::launch_periodic_mode(rx, log_cb, log_interval_secs)
+            LogMode::Periodic{mode, interval} => {
+                Self::launch_periodic_mode(rx, log_cb, mode, interval)
             }
         }
         Self { tx, err_cb }
@@ -89,14 +97,14 @@ where
             let mut state = MetricsState::new();
             for cmd in rx.iter() {
                 state.update(cmd);
-                if let Some(logs) = state.output_logs() {
+                if let Some(logs) = state.output_logs(PeriodicMode::Diff) {
                     (log_cb)(&logs);
                 }
             }
         });
     }
 
-    fn launch_periodic_mode<F2>(rx: Receiver<MetricsCmd>, log_cb: F2, log_interval_secs: u64)
+    fn launch_periodic_mode<F2>(rx: Receiver<MetricsCmd>, log_cb: F2, mode: PeriodicMode, log_interval_secs: u64)
     where
         F2: Fn(&str) + Copy + Send + Sync + 'static,
     {
@@ -115,7 +123,7 @@ where
 
                 let now = Instant::now();
                 if now >= next_log_time {
-                    if let Some(logs) = state.output_logs() {
+                    if let Some(logs) = state.output_logs(mode) {
                         (log_cb)(&logs);
                     }
                     next_log_time = now + interval;

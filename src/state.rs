@@ -1,4 +1,5 @@
 use crate::cmd::*;
+use crate::PeriodicMode;
 use std::collections::{HashMap, HashSet};
 
 #[derive(Default)]
@@ -56,7 +57,13 @@ impl MetricsState {
         }
     }
 
-    pub fn output_logs(&mut self) -> Option<String> {
+    pub fn output_logs(&mut self, mode: PeriodicMode) -> Option<String> {
+        match mode {
+            PeriodicMode::Diff => self.output_diff(),
+            PeriodicMode::Full => self.output_full(),
+        }
+    }
+    fn output_diff(&mut self) -> Option<String> {
         let mut logs = String::new();
 
         // Process counter updates
@@ -83,6 +90,31 @@ impl MetricsState {
                 name, avg, std_dev, histogram.min, histogram.max, histogram.num_samples
             ));
             }
+        }
+
+        if logs.is_empty() { None } else { Some(logs) }
+    }
+
+    fn output_full(&mut self) -> Option<String> {
+        let mut logs = String::new();
+        // Print all counter states
+        for (name, value) in &self.counter_state {
+            logs.push_str(&format!("Counter: {} = {}\n", name, value));
+        }
+
+        // Print all gauge states
+        for (name, value) in &self.gauge_state {
+            logs.push_str(&format!("Gauge: {} = {}\n", name, value));
+        }
+
+        // Print all histogram states
+        for (name, histogram) in &self.histogram_state {
+            let avg = histogram.avg().unwrap_or(0.0);
+            let std_dev = histogram.std_dev().unwrap_or(0.0);
+            logs.push_str(&format!(
+            "Histogram: {} - avg: {:.2}, std_dev: {:.2}, min: {:.2}, max: {:.2}, samples: {}\n",
+            name, avg, std_dev, histogram.min, histogram.max, histogram.num_samples
+            ));
         }
 
         if logs.is_empty() { None } else { Some(logs) }
