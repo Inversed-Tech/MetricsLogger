@@ -60,7 +60,7 @@ pub enum LogMode {
     /// Emit logs as soon as a metric is updated
     Immediate,
     /// Aggregate metrics for the specified duration, in seconds, before emitting a log
-    Periodic { mode: PeriodicMode, interval: u64}
+    Periodic { mode: PeriodicMode, interval: u64 },
 }
 
 #[derive(Clone, Copy)]
@@ -68,7 +68,7 @@ pub enum PeriodicMode {
     /// Only output metics which were updated.
     Diff,
     /// Output all metrics
-    Full
+    Full,
 }
 
 impl<F> MetricsLogger<F>
@@ -82,7 +82,7 @@ where
         let (tx, rx) = mpsc::channel();
         match mode {
             LogMode::Immediate => Self::launch_immediate_mode(rx, log_cb),
-            LogMode::Periodic{mode, interval} => {
+            LogMode::Periodic { mode, interval } => {
                 Self::launch_periodic_mode(rx, log_cb, mode, interval)
             }
         }
@@ -104,8 +104,12 @@ where
         });
     }
 
-    fn launch_periodic_mode<F2>(rx: Receiver<MetricsCmd>, log_cb: F2, mode: PeriodicMode, log_interval_secs: u64)
-    where
+    fn launch_periodic_mode<F2>(
+        rx: Receiver<MetricsCmd>,
+        log_cb: F2,
+        mode: PeriodicMode,
+        log_interval_secs: u64,
+    ) where
         F2: Fn(&str) + Copy + Send + Sync + 'static,
     {
         std::thread::spawn(move || {

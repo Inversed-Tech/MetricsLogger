@@ -1,5 +1,5 @@
-use crate::cmd::*;
 use crate::PeriodicMode;
+use crate::cmd::*;
 use std::collections::{HashMap, HashSet};
 
 #[derive(Default)]
@@ -69,14 +69,14 @@ impl MetricsState {
         // Process counter updates
         for name in self.counter_updates.drain() {
             if let Some(value) = self.counter_state.get(&name) {
-                logs.push_str(&format!("Counter: {} = {}\n", name, value));
+                logs.push_str(&format!(r#"{{"{}": {}}},"#, name, value));
             }
         }
 
         // Process gauge updates
         for name in self.gauge_updates.drain() {
             if let Some(value) = self.gauge_state.get(&name) {
-                logs.push_str(&format!("Gauge: {} = {}\n", name, value));
+                logs.push_str(&format!(r#"{{"{}": {}}},"#, name, value));
             }
         }
 
@@ -86,9 +86,9 @@ impl MetricsState {
                 let avg = histogram.avg().unwrap_or(0.0);
                 let std_dev = histogram.std_dev().unwrap_or(0.0);
                 logs.push_str(&format!(
-                "Histogram: {} - avg: {:.2}, std_dev: {:.2}, min: {:.2}, max: {:.2}, samples: {}\n",
-                name, avg, std_dev, histogram.min, histogram.max, histogram.num_samples
-            ));
+                    r#"{{"{}": {{"avg": {:.2}, "std_dev": {:.2}, "min": {:.2}, "max": {:.2}, "samples": {}}}}},"#,
+                    name, avg, std_dev, histogram.min, histogram.max, histogram.num_samples
+                ));
             }
         }
 
@@ -97,23 +97,23 @@ impl MetricsState {
 
     fn output_full(&mut self) -> Option<String> {
         let mut logs = String::new();
-        // Print all counter states
+        // Print all counter states as JSON
         for (name, value) in &self.counter_state {
-            logs.push_str(&format!("Counter: {} = {}\n", name, value));
+            logs.push_str(&format!(r#"{{"{}": {}}},"#, name, value));
         }
 
-        // Print all gauge states
+        // Print all gauge states as JSON
         for (name, value) in &self.gauge_state {
-            logs.push_str(&format!("Gauge: {} = {}\n", name, value));
+            logs.push_str(&format!(r#"{{"{}": {}}},"#, name, value));
         }
 
-        // Print all histogram states
+        // Print all histogram states as JSON
         for (name, histogram) in &self.histogram_state {
             let avg = histogram.avg().unwrap_or(0.0);
             let std_dev = histogram.std_dev().unwrap_or(0.0);
             logs.push_str(&format!(
-            "Histogram: {} - avg: {:.2}, std_dev: {:.2}, min: {:.2}, max: {:.2}, samples: {}\n",
-            name, avg, std_dev, histogram.min, histogram.max, histogram.num_samples
+                r#"{{"{}": {{"avg": {:.2}, "std_dev": {:.2}, "min": {:.2}, "max": {:.2}, "samples": {}}}}},"#,
+                name, avg, std_dev, histogram.min, histogram.max, histogram.num_samples
             ));
         }
 
