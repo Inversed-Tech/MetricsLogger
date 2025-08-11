@@ -1,5 +1,13 @@
 # metrics-logger
 
+[![release-badge][]][crate] [![docs-badge][]][docs] [![license-badge][]](LICENSE)
+
+[release-badge]: https://img.shields.io/crates/v/metrics-logger.svg
+[crate]: https://crates.io/crates/metrics-logger
+[docs-badge]: https://docs.rs/metrics-logger/badge.svg
+[docs]: https://docs.rs/metrics-logger
+[license-badge]: https://img.shields.io/crates/l/metrics-logger.svg
+
 `metrics-logger` is a crate for logging metrics. It aids development and testing by allowing developers to view metrics without setting up a network endpoint.
 
 This is achieved by implementing the `Recorder` trait from the `metrics` crate.
